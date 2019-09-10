@@ -56,11 +56,16 @@ ROOT_URLCONF = 'GTAnalyzer.urls'
 CORS_ORIGIN_ALLOW_ALL = False
 CORS_ORIGIN_WHITELIST = [
     'http://192.168.0.21:8080',
-    'https://gtanalyzer.firebaseapp.com'
+    'https://gtanalyzer.firebaseapp.com',
+    'http://10.153.10.120:8080',
+    'http://10.153.51.148:8080'
 ]
 CORS_ORIGIN_REGEX_WHITELIST = [
     'http://192.168.0.21:8080',
-    'https://gtanalyzer.firebaseapp.com'
+    'https://gtanalyzer.firebaseapp.com',
+    'http://10.153.10.120:8080',
+    'http://10.153.58.219:8080',
+    'http://10.153.51.148:8080'
 ]
 
 TEMPLATES = [
@@ -149,6 +154,40 @@ GH_API = {
     "ADD_COLLAB": "/repos/{}/{}/collaborators/{}",  # /repos/:owner/:repo/collaborators/:username
     "BRANCH_PROTECT": "/repos/{}/{}/branches/{}/protection",  # /repos/:owner/:repo/branches/:branch/protection
     "FLIGHT_CHECK": "/user"
+}
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'vb': {
+            'format':"%(levelname)s %(asctime)s %(name)s.%(funcName)s:%(lineno)s- %(message)s"
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': os.environ.get('LOG_FILE_LOCATION', '/tmp/gtanalyzer.log'),
+            'formatter': 'vb'
+        },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+        }
+    },
+    'loggers': {
+        '': {
+            'handlers': ['console'],
+            'propagate': True,
+            'level': 'INFO',
+        },
+        'django': {
+            'handlers': ['file', 'console'],
+            'propagate': True,
+            'level': 'INFO',
+        },
+    }
 }
 
 # Static files (CSS, JavaScript, Images)

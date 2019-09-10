@@ -1,11 +1,13 @@
 """
 Support Module for Views
 """
+import logging
 from .GitHubAPI import *
 from .utils import *
 from .custom_exceptions import CreateRepoFlowBroken
 from .APIPayloadKeyConstants import *
-import csv
+
+LOGGER = logging.getLogger(__name__)
 
 
 class FlightChecker(object):
@@ -57,20 +59,33 @@ class RepositoryCreator(object):
         token = get_token(data)
         username = get_username(data)
         result = check_token_username(token, username)
-        if result is None:
+        if result is not None:  # token-username validation failed
             return result, True
-        reader = csv.DictReader(data[key].read().decode('utf-8').splitlines())
-        parsed = [RepositoryCreator.sanitize_csv_row(row) for row in reader]
+        parsed = list(map(lambda x: RepositoryCreator.sanitize_row(x),
+                          data.get(GH_CREATE_DATA)))
+        parsed = RepositoryCreator.convert_list_to_dic(parsed)
         parsed = RepositoryCreator.check_for_optional_fields(parsed)
-        parsed, _error = validate_repo_create_csv(parsed)
-        if parsed is None:  # validation failed
-            return _error, True
         payload = RepositoryCreator.prepare_repo_flow_payload(parsed)
         return RepositoryCreator.create_repo_flow(payload, token, username), False
 
     @staticmethod
-    def sanitize_csv_row(row):
-        return {key.strip(): value.strip() for key, value in row.items()}
+    def convert_list_to_dic(data):
+        """covert list data to dictionary"""
+        repo_name = GH_CREAT_REPO_REPO_NAME_KEY
+        collaborator_name = GH_CREAT_REPO_COLLABORATOR_NAME_KEY
+        # the fist entry of the list is the repository name
+        # every other entry is the name of a collaborator
+        records = []
+        for row in data:
+            tmp = dict()
+            tmp[repo_name] = row[0]
+            tmp[collaborator_name] = row[1:]
+            records.append(tmp)
+        return records
+
+    @staticmethod
+    def sanitize_row(row):
+        return list(map(lambda x: x.strip(" "), row))
 
     @staticmethod
     def check_for_optional_fields(parsed):
@@ -95,20 +110,13 @@ class RepositoryCreator(object):
                     "auto_init": True,  # without this an empty repo is created (no branch)
                     "private": record.get(private),
                 },
-                "add_collaborators": []
+                "add_collaborators": record.get(collaborator_name)
             }
-        for record in parsed:
-            for key in record.keys():
-                if key == collaborator_name or key == "":
-                    payload[record.get(repo_name)]["add_collaborators"].append(record[key])
-
         return payload
 
     @staticmethod
     def create_repo_flow(payload, token, username):
         flow_response = {}
-        create_success = []
-        create_failure = {}
         for key, value in payload.items():
             # creating a repo, adding collaborators and adding branch protection is one
             # atomic transaction
@@ -116,23 +124,25 @@ class RepositoryCreator(object):
                 response, is_error = create_repository(token, value["create_repo"])
                 if is_error:
                     raise CreateRepoFlowBroken({"reason": response, "repo_created": False,
-                                                "step": "create repo"})
+                                                "step": "create repo", "repo_deleted": None,
+                                                "failed": True})
                 response, is_error = add_collaborator(token, value["add_collaborators"],
                                                       username, key)
                 if is_error:
                     _, repo_deleted = delete_repository(token, username, key)
                     raise CreateRepoFlowBroken({"reason": response, "repo_created": True,
                                                 "repo_deleted": (not repo_deleted, _),
-                                                "step": "add collaborators"})
+                                                "step": "add collaborators", "failed": True})
                 response, is_error = enable_protections(token, username, key)
                 if is_error:
                     _, repo_deleted = delete_repository(token, username, key)
                     raise CreateRepoFlowBroken({"reason": response, "repo_created": True,
                                                 "repo_deleted": not repo_deleted,
-                                                "step": "enable branch protection"})
-                create_success.append(key)
+                                                "step": "enable branch protection",
+                                                "failed": True})
+                flow_response[key] = [{"reason": "N/A", "repo_created": True,
+                                       "step": "N/A", "repo_deleted": None,
+                                       "failed": False}]
             except CreateRepoFlowBroken as ex:
-                create_failure[key] = ex.args
-        flow_response["failed_repositories"] = create_failure
-        flow_response["successful_repositories"] = create_success
+                flow_response[key] = ex.args
         return flow_response
