@@ -2,6 +2,7 @@
 Module to interact with the GitHub API
 """
 
+import urllib
 from urllib.request import Request, urlopen
 from GTAnalyzer.settings import GH_API
 from .decorators import http_error_decorator
@@ -53,18 +54,20 @@ def create_repository(token, payload):
     json.load(response)
 
 
+"""
+@payload: a list of strings
+"""
 @http_error_decorator
-def add_collaborator(token, payload, owner, repo_name):
+def add_collaborator(token, owner, repo_name, collaborator_name):
     """Add collaborators to an existing repository"""
     headers = get_headers(token)
+    # PUT request with no parameters
     headers.update({"Content-Length": 0})
-    for user in payload:
-        endpoint = "{}{}".format(GH_API.get("BASE"),
-                                 GH_API.get("ADD_COLLAB").format(owner, repo_name, user))
-        print(endpoint)
-        request_obj = Request(endpoint, headers=headers, method="PUT")
-        urlopen(request_obj)
-    return json.dumps({"done": True})
+    endpoint = "{}{}".format(GH_API.get("BASE"),
+                             GH_API.get("ADD_COLLAB").format(owner, repo_name, collaborator_name))
+    request_obj = Request(endpoint, headers=headers, method="PUT")
+    response = urlopen(request_obj)
+    return json.load(response)
 
 
 @http_error_decorator
@@ -102,3 +105,7 @@ def get_protection_config():
         "required_approving_review_count": 1
     }
     return config
+
+
+def get_commit(token, owner, repo_name, commit_sha):
+    """Get commit from """

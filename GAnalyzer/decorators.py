@@ -14,7 +14,7 @@ def error_decorator(func):
         try:
             return func(*args, **kwargs)
         #pylint: disable=broad-except
-        except Exception:
+        except Exception as ex:
             _exc_type, _exc_value, exc_traceback = sys.exc_info()
             response = {'error': traceback.format_tb(exc_traceback), 'saved': False}
             return Response(response, status=500)
@@ -27,8 +27,11 @@ def http_error_decorator(func):
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs), False
-        # pylint: disable=broad-except
+        #pylint: disable=broad-except
         except urllib.error.HTTPError as http_e:
             return http_e.reason, True
-
+        except AssertionError as ae:
+            return ae.args, True
+        except Exception as ex:
+            return ex.args, True
     return wrapper

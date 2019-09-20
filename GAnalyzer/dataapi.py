@@ -4,7 +4,6 @@ Support Module for Views
 import logging
 from .GitHubAPI import *
 from .utils import *
-from .custom_exceptions import CreateRepoFlowBroken
 from .APIPayloadKeyConstants import *
 
 LOGGER = logging.getLogger(__name__)
@@ -110,39 +109,47 @@ class RepositoryCreator(object):
                     "auto_init": True,  # without this an empty repo is created (no branch)
                     "private": record.get(private),
                 },
-                "add_collaborators": record.get(collaborator_name)
+                "collaborators": record.get(collaborator_name)
             }
         return payload
 
     @staticmethod
     def create_repo_flow(payload, token, username):
-        flow_response = {}
+        crr = CreateRepoResponse()
+        flow_response = []
         for key, value in payload.items():
             # creating a repo, adding collaborators and adding branch protection is one
             # atomic transaction
-            try:
-                response, is_error = create_repository(token, value["create_repo"])
-                if is_error:
-                    raise CreateRepoFlowBroken({"reason": response, "repo_created": False,
-                                                "step": "create repo", "repo_deleted": None,
-                                                "failed": True})
-                response, is_error = add_collaborator(token, value["add_collaborators"],
-                                                      username, key)
-                if is_error:
-                    _, repo_deleted = delete_repository(token, username, key)
-                    raise CreateRepoFlowBroken({"reason": response, "repo_created": True,
-                                                "repo_deleted": (not repo_deleted, _),
-                                                "step": "add collaborators", "failed": True})
-                response, is_error = enable_protections(token, username, key)
-                if is_error:
-                    _, repo_deleted = delete_repository(token, username, key)
-                    raise CreateRepoFlowBroken({"reason": response, "repo_created": True,
-                                                "repo_deleted": not repo_deleted,
-                                                "step": "enable branch protection",
-                                                "failed": True})
-                flow_response[key] = [{"reason": "N/A", "repo_created": True,
-                                       "step": "N/A", "repo_deleted": None,
-                                       "failed": False}]
-            except CreateRepoFlowBroken as ex:
-                flow_response[key] = ex.args
+            crr.repo_name = key
+            # 1. Create the repo
+            response, is_error = create_repository(token, value["create_repo"])
+            crr.repo_created = not is_error
+            if is_error:
+                crr.reason = response  # Only set reason if there is a failure
+                crr.failed = True
+                crr.failure_step = "Repo Creation"
+                flow_response.append(crr.__dict__)
+                break
+
+            # 2. Add collaborators
+            collaborator_response = []
+            for collaborator in value["collaborators"]:
+                response, is_error = add_collaborator(token, username, key, collaborator)
+                collaborator_response.append({"collab_name": collaborator, collaborator: response, "failed": is_error})
+            crr.collaborator_status = collaborator_response
+
+            # 3. Enable branch protection on master branch
+            response, is_error = enable_protections(token, username, key)
+            crr.protection_enabled = not is_error
+            if is_error:
+                crr.reason = response  # Only set reason if there is a failure
+                crr.failed = True
+                crr.failure_step = "Enable Branch Protection"
+                flow_response.append(crr.__dict__)
+                break
+
+            # 4. Create new commit
+            # TODO
+
+            flow_response.append(crr.__dict__)
         return flow_response

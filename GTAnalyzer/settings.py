@@ -57,15 +57,12 @@ CORS_ORIGIN_ALLOW_ALL = False
 CORS_ORIGIN_WHITELIST = [
     'http://192.168.0.21:8080',
     'https://gtanalyzer.firebaseapp.com',
-    'http://10.153.10.120:8080',
-    'http://10.153.51.148:8080'
+    'http://10.153.51.242:8080'
 ]
 CORS_ORIGIN_REGEX_WHITELIST = [
     'http://192.168.0.21:8080',
     'https://gtanalyzer.firebaseapp.com',
-    'http://10.153.10.120:8080',
-    'http://10.153.58.219:8080',
-    'http://10.153.51.148:8080'
+    'http://10.153.51.242:8080'
 ]
 
 TEMPLATES = [
@@ -153,7 +150,8 @@ GH_API = {
     "DELETE_REPO": "/repos/{}/{}",  # /repos/:owner/:repo
     "ADD_COLLAB": "/repos/{}/{}/collaborators/{}",  # /repos/:owner/:repo/collaborators/:username
     "BRANCH_PROTECT": "/repos/{}/{}/branches/{}/protection",  # /repos/:owner/:repo/branches/:branch/protection
-    "FLIGHT_CHECK": "/user"
+    "FLIGHT_CHECK": "/user",
+    "GET_COMMIT": "/repos/{}/{}/git/commits/{}",  # /repos/:owner/:repo/git/commits/:commit_sha
 }
 
 LOGGING = {
