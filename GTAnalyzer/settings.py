@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'GAnalyzer',
+    'TAnalyzer',
     'rest_framework',
     'gunicorn',
     'corsheaders',
@@ -154,12 +155,19 @@ GH_API = {
     "GET_COMMIT": "/repos/{}/{}/git/commits/{}",  # /repos/:owner/:repo/git/commits/:commit_sha
 }
 
+TG_API = {
+    "TG_TOKEN": os.environ.get("TAIGA_TOKEN"),
+    "BASE": "https://api.taiga.io/api/v1",
+    "AUTH": "/auth",
+    "MEMBERSHIP": "/projects?member={}"
+}
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
         'vb': {
-            'format':"%(levelname)s %(asctime)s %(name)s.%(funcName)s:%(lineno)s- %(message)s"
+            'format': "%(levelname)s %(asctime)s %(name)s.%(funcName)s:%(lineno)s- %(message)s"
         },
     },
     'handlers': {
