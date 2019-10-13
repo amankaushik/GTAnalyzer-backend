@@ -3,7 +3,9 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework import status
 from .decorators import *
-from .dataapi import DataExtractor, AuthTokenGetter, MembershipDetailsGetter
+from .utils import DataExtractor
+from .dataapi import AuthTokenGetter, MembershipDetailsGetter,\
+    ProjectBoardCreator
 import logging
 
 
@@ -19,33 +21,30 @@ class GetAuthTokenView(APIViewPOST):
     """Get Auth token from username and password"""
 
     @staticmethod
+    @view_response_decorator
     def post(request):
         """Get authentication header"""
         data = DataExtractor.get_data_object(request)
-        response, is_error = AuthTokenGetter.get_auth_token(data)
-        if is_error:
-            return Response(response, status.HTTP_500_INTERNAL_SERVER_ERROR)
-        return Response(response)
+        return AuthTokenGetter.get_auth_token(data)
 
 
 class GetBoardListView(APIViewPOST):
     """Get the list of boards"""
 
     @staticmethod
+    @view_response_decorator
     def post(request):
         """get the list of boards"""
         data = DataExtractor.get_data_object(request)
-        response, is_error = MembershipDetailsGetter.get_membership_details(data)
-        if is_error:
-            return Response(response, status.HTTP_500_INTERNAL_SERVER_ERROR)
-        return Response(response)
+        return MembershipDetailsGetter.get_membership_details(data)
 
 
 class CreateBoardView(APIViewPOST):
     """Create new board(s)"""
 
     @staticmethod
-    @error_decorator
+    @view_response_decorator
     def post(request):
         """create new board(s)"""
-        pass
+        data = DataExtractor.get_data_object(request)
+        return ProjectBoardCreator.bulk_create_project_boards(data)

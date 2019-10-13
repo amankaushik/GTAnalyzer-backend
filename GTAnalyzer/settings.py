@@ -58,12 +58,16 @@ CORS_ORIGIN_ALLOW_ALL = False
 CORS_ORIGIN_WHITELIST = [
     'http://192.168.0.21:8080',
     'https://gtanalyzer.firebaseapp.com',
-    'http://10.153.51.242:8080'
+    'http://10.153.51.242:8080',
+    'http://127.0.0.1:8080',
+    'http://localhost:8080'
 ]
 CORS_ORIGIN_REGEX_WHITELIST = [
     'http://192.168.0.21:8080',
     'https://gtanalyzer.firebaseapp.com',
-    'http://10.153.51.242:8080'
+    'http://10.153.51.242:8080',
+    'http://127.0.0.1:8080',
+    'http://localhost:8080'
 ]
 
 TEMPLATES = [
@@ -159,7 +163,9 @@ TG_API = {
     "TG_TOKEN": os.environ.get("TAIGA_TOKEN"),
     "BASE": "https://api.taiga.io/api/v1",
     "AUTH": "/auth",
-    "MEMBERSHIP": "/projects?member={}"
+    "MEMBERSHIP": "/projects?member={}",
+    "CREATE_PROJECT": "/projects",
+    "ADD_MEMBERS": "/memberships/bulk_create"
 }
 
 LOGGING = {
