@@ -1,8 +1,11 @@
 """Support methods"""
-from collections import namedtuple
 
 from .APIPayloadKeyConstants import *
 from GTAnalyzer.settings import GH_API
+from collections import defaultdict
+import logging
+
+LOGGER = logging.getLogger(__name__)
 
 
 def validate_repo_create_csv(parsed):
@@ -55,3 +58,34 @@ class CreateRepoResponse(object):
     collaborator_status = None,  # list
     protection_enabled = None,  # Bool
     repo_created = None  # Bool
+
+
+class AnalysisProgressTracker(object):
+    """A non-thread safe singleton class to track the progress of an analysis"""
+    __instance = None
+    # dict of dict
+    __analysis_results = None
+
+    @staticmethod
+    def get_instance():
+        """Get the singleton instance"""
+        if AnalysisProgressTracker.__instance is None:
+            return AnalysisProgressTracker()
+        return AnalysisProgressTracker.__instance
+
+    def __init__(self):
+        """Constructor"""
+        if AnalysisProgressTracker.__instance is not None:
+            raise Exception('Trying to initialize a Singleton class.')
+        AnalysisProgressTracker.__instance = self
+        self.__analysis_results = defaultdict(dict)
+
+    def get_analysis_results(self, request_id=None, group_id=None):
+        if request_id is not None and group_id is not None:
+            return self.__analysis_results[request_id][group_id]
+        if request_id is not None:
+            return self.__analysis_results[request_id]
+        return self.__analysis_results
+
+    def set_analysis_results(self, request_id, group_id, value):
+        self.__analysis_results[request_id][group_id] = value

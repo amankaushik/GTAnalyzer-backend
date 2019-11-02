@@ -1,7 +1,10 @@
 """Support methods"""
 
+import logging
 from .APIPayloadKeyConstants import *
 from GTAnalyzer.settings import TG_API
+
+LOGGER = logging.getLogger(__name__)
 
 
 class FieldExtractor(object):

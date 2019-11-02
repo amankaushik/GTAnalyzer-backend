@@ -5,6 +5,7 @@ import logging
 from .GitHubAPI import *
 from .utils import *
 from .APIPayloadKeyConstants import *
+from .decorators import new_thread_decorator
 
 LOGGER = logging.getLogger(__name__)
 
@@ -153,3 +154,39 @@ class RepositoryCreator(object):
 
             flow_response.append(crr.__dict__)
         return flow_response
+
+
+class Analyzer(object):
+    """Perform repository analysis"""
+
+    @staticmethod
+    def perform_analysis_async(data):
+        Analyzer._perform_analysis_threaded(data)
+        # TODO: remove hard-coding
+        return {'saved': True,
+                'combinations': 10}, False
+
+    @staticmethod
+    @new_thread_decorator
+    def _perform_analysis_threaded(data):
+        # loop through each group in data and
+        # perform analysis of each group sequentially
+        from random import randint
+        import time
+        # get singleton object
+        apt_object = AnalysisProgressTracker.get_instance()
+        for _ in data['combinations']:
+            apt_object.set_analysis_results(data['request_id'],
+                                            randint(0, 100),
+                                            "Checked")
+            time.sleep(5)
+        return
+
+
+class AnalysisResultsPoller(object):
+    """Poller for Analysis results"""
+
+    @staticmethod
+    def poll(data):
+        apt_object = AnalysisProgressTracker.get_instance()
+        return apt_object.get_analysis_results(), False

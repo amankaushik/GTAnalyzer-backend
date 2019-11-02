@@ -3,8 +3,13 @@
 import sys
 import functools
 import traceback
+from threading import Thread
 from rest_framework.response import Response
 import urllib
+import logging
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def error_decorator(func):
@@ -34,4 +39,15 @@ def http_error_decorator(func):
             return ae.args, True
         except Exception as ex:
             return ex.args, True
+    return wrapper
+
+
+def new_thread_decorator(func):
+    """create a new daemon thread"""
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        LOGGER.info("starting new thread")
+        t = Thread(target=func, args=args, kwargs=kwargs)
+        t.daemon = True
+        t.start()
     return wrapper
