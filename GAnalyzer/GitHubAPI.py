@@ -2,11 +2,13 @@
 Module to interact with the GitHub API
 """
 
-import urllib
 from urllib.request import Request, urlopen
 from GTAnalyzer.settings import GH_API
 from .decorators import http_error_decorator
 import json
+import logging
+
+LOGGER = logging.getLogger(__name__)
 
 
 @http_error_decorator
@@ -19,6 +21,7 @@ def flight_check(token):
     return json.load(response)
 
 
+@http_error_decorator
 def get_repository_list(token, _type=None, affiliation=None):
     """get a list of repositories for a user"""
     endpoint = "{}{}".format(GH_API.get("BASE"),
@@ -107,5 +110,25 @@ def get_protection_config():
     return config
 
 
-def get_commit(token, owner, repo_name, commit_sha):
-    """Get commit from """
+@http_error_decorator
+def get_commit(token, owner, repo_name, start_date, end_date, author=None):
+    """Get commits for the given date range """
+    endpoint = "{}{}".format(GH_API.get("BASE"),
+                             GH_API.get("GET_COMMIT")
+                             .format(owner, repo_name, start_date, end_date))
+    # Get commits only for a single author
+    if author is not None:
+        endpoint += "&author={}".format(author)
+    request_obj = Request(endpoint, headers=get_headers(token))
+    response = urlopen(request_obj)
+    return json.load(response)
+
+
+@http_error_decorator
+def get_collaborators(token, owner, repo_name):
+    """get a list of collaborators for a repositories"""
+    endpoint = "{}{}".format(GH_API.get("BASE"),
+                             GH_API.get("GET_COLLAB").format(owner, repo_name))
+    request_obj = Request(endpoint, headers=get_headers(token))
+    response = urlopen(request_obj)
+    return json.load(response)

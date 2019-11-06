@@ -80,12 +80,10 @@ class AnalysisProgressTracker(object):
         AnalysisProgressTracker.__instance = self
         self.__analysis_results = defaultdict(dict)
 
-    def get_analysis_results(self, request_id=None, group_id=None):
-        if request_id is not None and group_id is not None:
+    def get_analysis_results(self, request_id, group_id=None):
+        if group_id is not None:
             return self.__analysis_results[request_id][group_id]
-        if request_id is not None:
-            return self.__analysis_results[request_id]
-        return self.__analysis_results
+        return self.__analysis_results[request_id]
 
     def set_analysis_results(self, request_id, group_id, value):
         self.__analysis_results[request_id][group_id] = value

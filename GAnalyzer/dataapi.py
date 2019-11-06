@@ -2,6 +2,7 @@
 Support Module for Views
 """
 import logging
+from datetime import datetime, timezone
 from .GitHubAPI import *
 from .utils import *
 from .APIPayloadKeyConstants import *
@@ -148,10 +149,6 @@ class RepositoryCreator(object):
                 crr.failure_step = "Enable Branch Protection"
                 flow_response.append(crr.__dict__)
                 break
-
-            # 4. Create new commit
-            # TODO
-
             flow_response.append(crr.__dict__)
         return flow_response
 
@@ -161,25 +158,27 @@ class Analyzer(object):
 
     @staticmethod
     def perform_analysis_async(data):
+        # number of repos to Analyse
+        num_combinations = len(data.get(GH_ANALYSE_REPO_LIST))
+        request_id = data.get('request_id')
         Analyzer._perform_analysis_threaded(data)
-        # TODO: remove hard-coding
         return {'saved': True,
-                'combinations': 10}, False
+                'combinations': num_combinations,
+                'request_id': request_id}, False
 
     @staticmethod
     @new_thread_decorator
     def _perform_analysis_threaded(data):
         # loop through each group in data and
         # perform analysis of each group sequentially
-        from random import randint
-        import time
         # get singleton object
         apt_object = AnalysisProgressTracker.get_instance()
-        for _ in data['combinations']:
+        for repo in data.pop(GH_ANALYSE_REPO_LIST):
+            repo_name = repo.get(GH_ANALYSE_REPO_LIST_NAME)
+            result = AnalysisPerformer.perform_analysis(repo, data)
             apt_object.set_analysis_results(data['request_id'],
-                                            randint(0, 100),
-                                            "Checked")
-            time.sleep(5)
+                                            repo_name,
+                                            result)
         return
 
 
@@ -188,5 +187,56 @@ class AnalysisResultsPoller(object):
 
     @staticmethod
     def poll(data):
+        request_id = data.get('request_id')
         apt_object = AnalysisProgressTracker.get_instance()
-        return apt_object.get_analysis_results(), False
+        return apt_object.get_analysis_results(request_id), False
+
+
+class AnalysisPerformer(object):
+    """Perform Analysis on GH repo"""
+
+    @staticmethod
+    def perform_analysis(repo, data):
+        username = get_username(data)
+        token = get_token(data)
+        repo_name = repo.get(GH_ANALYSE_REPO_LIST_NAME)
+        start_date = datetime.fromtimestamp(int(repo.get(GH_ANALYSE_REPO_LIST_ST_DT)),
+                                            tz=timezone.utc).isoformat()
+        end_date = datetime.fromtimestamp(int(repo.get(GH_ANALYSE_REPO_LIST_ED_DT)),
+                                          tz=timezone.utc).isoformat()
+        # TODO: Check for Taiga Integration
+        # Get a list of collaborators for this repo
+        collaborators, is_error = get_collaborators(token, username, repo_name)
+        if is_error:
+            return {"repo_name": repo_name, "error": collaborators, "failed": True}
+        # collaborator names
+        c_names = []
+        for collaborator in collaborators:
+            c_names.append(collaborator.get(GH_API_RESPONSE_USERNAME))
+        # Get commit data for each collaborator for the given date range
+        commits_dump, is_error = get_commit(token, username, repo_name,
+                                            start_date, end_date)
+        if is_error:
+            return {"repo_name": repo_name, "error": commits_dump, "failed": True}
+        commit_map = defaultdict(list)
+        for commit_data in commits_dump:
+            commit_map[commit_data[GH_API_RESPONSE_COMMITTER][GH_API_RESPONSE_USERNAME]]\
+                .append(AnalysisPerformer._make_commit_details_object(commit_data))
+
+        # only add those committers that are collaborators as well
+        # removes merge commits
+        return {author: {"commits": commit_map[author]}
+                for author in commit_map.keys() if author in c_names}
+
+    @staticmethod
+    def _make_commit_details_object(data):
+        """make a dict object with required commit details"""
+        commit = data[GH_API_RESPONSE_COMMIT]
+        author = data[GH_API_RESPONSE_COMMITTER]
+        return {
+            "author": author[GH_API_RESPONSE_USERNAME],
+            "message": commit[GH_API_RESPONSE_COMMIT_MESSAGE],
+            "comment_count": commit[GH_API_RESPONSE_COMMIT_CMT_CNT],
+            "sha": commit[GH_API_RESPONSE_COMMIT_TREE][GH_API_RESPONSE_COMMIT_SHA],
+            "date": commit[GH_API_RESPONSE_COMMITTER][GH_API_RESPONSE_COMMIT_DT]
+        }

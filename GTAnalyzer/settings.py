@@ -156,7 +156,8 @@ GH_API = {
     "ADD_COLLAB": "/repos/{}/{}/collaborators/{}",  # /repos/:owner/:repo/collaborators/:username
     "BRANCH_PROTECT": "/repos/{}/{}/branches/{}/protection",  # /repos/:owner/:repo/branches/:branch/protection
     "FLIGHT_CHECK": "/user",
-    "GET_COMMIT": "/repos/{}/{}/git/commits/{}",  # /repos/:owner/:repo/git/commits/:commit_sha
+    "GET_COMMIT": "/repos/{}/{}/commits?since={}&until={}",  # /repos/:owner/:repo/commits
+    "GET_COLLAB": "/repos/{}/{}/collaborators?",  # /repos/:owner/:repo/collaborators
 }
 
 TG_API = {
