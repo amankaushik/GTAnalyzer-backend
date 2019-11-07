@@ -205,38 +205,212 @@ class AnalysisPerformer(object):
         end_date = datetime.fromtimestamp(int(repo.get(GH_ANALYSE_REPO_LIST_ED_DT)),
                                           tz=timezone.utc).isoformat()
         # TODO: Check for Taiga Integration
+        # Get a list of branches for this repo
+        branches, is_error = AnalysisPerformer._get_branches(token, username, repo_name)
+        if is_error:
+            return branches
+        # Collect data for each branch
         # Get a list of collaborators for this repo
-        collaborators, is_error = get_collaborators(token, username, repo_name)
+        c_names, is_error = AnalysisPerformer._get_collaborators(token, username, repo_name)
         if is_error:
-            return {"repo_name": repo_name, "error": collaborators, "failed": True}
-        # collaborator names
-        c_names = []
-        for collaborator in collaborators:
-            c_names.append(collaborator.get(GH_API_RESPONSE_USERNAME))
-        # Get commit data for each collaborator for the given date range
-        commits_dump, is_error = get_commit(token, username, repo_name,
-                                            start_date, end_date)
+            return c_names
+        # complete data required for Analysis
+        data_dump = {}
+        for branch in branches:
+            data_dump[branch] = {name: {} for name in c_names}
+            # Get commit data for each collaborator for the given date range
+            commit_data, is_error = AnalysisPerformer._get_commits(token, username, repo_name, branch,
+                                                                   start_date, end_date, c_names)
+            if is_error:
+                return commit_data
+            commit_data = AnalysisPerformer._add_commit_stats(token,
+                                                              username, repo_name, commit_data)
+            if is_error:
+                return commit_data
+            data_dump[branch] = AnalysisPerformer._merge(data_dump[branch],
+                                                         commit_data, "commits")
+        # Get PR data for each collaborator
+        # c_pr: collaborator to PR number mapping
+        pr_details, c_pr, is_error = AnalysisPerformer._get_pr(token, username, repo_name, c_names, branches)
         if is_error:
-            return {"repo_name": repo_name, "error": commits_dump, "failed": True}
-        commit_map = defaultdict(list)
-        for commit_data in commits_dump:
-            commit_map[commit_data[GH_API_RESPONSE_COMMITTER][GH_API_RESPONSE_USERNAME]]\
-                .append(AnalysisPerformer._make_commit_details_object(commit_data))
+            return pr_details
+        data_dump = AnalysisPerformer._merge_pr_data(data_dump, c_pr)
+        data_dump["pr_details"] = pr_details
+        return data_dump
 
-        # only add those committers that are collaborators as well
-        # removes merge commits
-        return {author: {"commits": commit_map[author]}
-                for author in commit_map.keys() if author in c_names}
+    @staticmethod
+    def _merge_pr_data(data_dump, c_pr):
+        """Merge PR data into all data"""
+        for branch, pr_details in c_pr.items():
+            for author, pr in pr_details.items():
+                data_dump[branch][author].update(pr)
+        return data_dump
+
+    @staticmethod
+    def _get_branches(token, username, repo_name):
+        """Get branches for the given repo"""
+        branches, is_error = get_branches(token, username, repo_name)
+        if is_error:
+            return {"repo_name": repo_name, "error": branches, "failed": True}, \
+                   is_error
+        # branch names
+        return [branch[GH_API_BRANCH_NAME] for branch in branches], is_error
 
     @staticmethod
     def _make_commit_details_object(data):
         """make a dict object with required commit details"""
-        commit = data[GH_API_RESPONSE_COMMIT]
-        author = data[GH_API_RESPONSE_COMMITTER]
+        commit = data[GH_API_COMMIT]
+        author = data[GH_API_COMMITTER]
         return {
-            "author": author[GH_API_RESPONSE_USERNAME],
-            "message": commit[GH_API_RESPONSE_COMMIT_MESSAGE],
-            "comment_count": commit[GH_API_RESPONSE_COMMIT_CMT_CNT],
-            "sha": commit[GH_API_RESPONSE_COMMIT_TREE][GH_API_RESPONSE_COMMIT_SHA],
-            "date": commit[GH_API_RESPONSE_COMMITTER][GH_API_RESPONSE_COMMIT_DT]
+            "author": author[GH_API_USERNAME],
+            "author_display": commit[GH_API_COMMITTER][GH_API_AUTHOR_DISPLAY],
+            "message": commit[GH_API_COMMIT_MESSAGE],
+            "comment_count": commit[GH_API_COMMIT_CMT_CNT],
+            "sha": data[GH_API_COMMIT_SHA],
+            "url": data[GH_API_COMMIT_URL],
+            "date": commit[GH_API_COMMITTER][GH_API_COMMIT_DT]
         }
+
+    @staticmethod
+    def _get_commits(token, username, repo_name, branch, start_date, end_date, c_names):
+        """get commits for a repository"""
+        commits_dump, is_error = get_commit(token, username, repo_name, branch,
+                                            start_date, end_date)
+        if is_error:
+            return {"repo_name": repo_name, "error": commits_dump, "failed": True}, \
+                   is_error
+        commit_map = defaultdict(list)
+        for commit_data in commits_dump:
+            commit_map[commit_data[GH_API_COMMITTER][GH_API_USERNAME]] \
+                .append(AnalysisPerformer._make_commit_details_object(commit_data))
+        return commit_map, is_error
+
+    @staticmethod
+    def _merge(data_dump, partial_data, key_name):
+        """merge partial data into the central data"""
+        for key in partial_data.keys():
+            if data_dump.get(key) is not None:
+                data_dump[key].update({key_name: partial_data[key]})
+        return data_dump
+
+    @staticmethod
+    def _get_collaborators(token, username, repo_name):
+        """get collaborators for a repository"""
+        collaborators, is_error = get_collaborators(token, username, repo_name)
+        if is_error:
+            return {"repo_name": repo_name, "error": collaborators, "failed": True}, \
+                   is_error
+        # collaborator names
+        return [collaborator[GH_API_USERNAME] for collaborator in collaborators], \
+               is_error
+
+    @staticmethod
+    def _make_pr_details_object(data):
+        """Create a dictionary with PR details"""
+        return {
+            "url": data[GH_API_PR_URL],
+            "title": data[GH_API_PR_TITLE],
+            "state": data[GH_API_PR_STATE],
+            "number": data[GH_API_PR_NUM],
+            "body": data[GH_API_PR_BODY],
+            "created_at": data[GH_API_PR_CR_DT],
+            "closed_at": data.get(GH_API_PR_CL_DT),
+            "merged_at": data.get(GH_API_PR_MR_DT),
+            "assignees": data[GH_API_PR_ASG],
+            "requested_reviewers": data[GH_API_PR_REV],
+            "head": data[GH_API_PR_HEAD][GH_API_PR_REF],
+            "base": data[GH_API_PR_BASE][GH_API_PR_REF],
+            "user": data[GH_API_PR_USER][GH_API_PR_USERNAME]
+        }
+
+    @staticmethod
+    def _get_pr(token, username, repo_name, c_names, branches):
+        """Get PRs for the given repository"""
+        pr_dump, is_error = get_pr(token, username, repo_name)
+        if is_error:
+            return {"repo_name": repo_name, "error": pr_dump, "failed": True}, {}, \
+                   is_error
+        pr_details = {}
+        # branch to collaborator to PR
+        c_pr = {}
+        # c_pr = {branch: {name: {"assignee": [], "reviewer": [], "author": []}
+        #         for name in c_names} for branch in branches}
+        for pr in pr_dump:
+            details = AnalysisPerformer._make_pr_details_object(pr)
+            pr_num = details["number"]
+            head = details["head"]
+            base = details["base"]
+            c_pr = AnalysisPerformer._extract_assignee_reviewer(details.pop("assignees"),
+                                                                "assignee", pr_num, head, base,
+                                                                c_names, branches, c_pr)
+            c_pr = AnalysisPerformer._extract_assignee_reviewer(details.pop("requested_reviewers"),
+                                                                "reviewer", pr_num, head, base,
+                                                                c_names, branches, c_pr)
+            c_pr = AnalysisPerformer._extract_assignee_reviewer([{GH_API_PR_USERNAME: details["user"]}],
+                                                                "author", pr_num, head, base,
+                                                                c_names, branches, c_pr)
+            if details["user"] in c_names:
+                single_pr = AnalysisPerformer._get_single_pr(token,
+                                                             username, repo_name, pr_num)
+                details.update(single_pr)
+                pr_details[pr_num] = details
+        return pr_details, c_pr, is_error
+
+    @staticmethod
+    def _extract_assignee_reviewer(data, insert_key, pr_num, head, base,
+                                   c_names, branches, c_pr):
+        for name in data:
+            author = name[GH_API_PR_USERNAME]
+            if author in c_names:
+                for branch in [head, base]:
+                    if branch in branches:
+                        try:
+                            _val = c_pr[branch][author][insert_key]
+                        except KeyError:
+                            c_pr[branch] = {author: defaultdict(list)}
+                        c_pr[branch][author][insert_key].append(pr_num)
+        return c_pr
+
+    @staticmethod
+    def _get_single_pr(token, username, repo_name, pr_num):
+        """Get details of a single PR"""
+        pr_data, is_error = get_single_pr(token, username, repo_name, pr_num)
+        details = {
+            "num_comments": None,
+            "num_rev_comments": None,
+            "num_commits": None,
+            "num_add": None,
+            "num_del": None,
+            "num_files": None
+        }
+        if not is_error:
+            details["num_comments"] = pr_data[GH_API_PR_COMMENTS]
+            details["num_rev_comments"] = pr_data[GH_API_PR_REV_COMMENTS]
+            details["num_commits"] = pr_data[GH_API_PR_COMMITS]
+            details["num_add"] = pr_data[GH_API_PR_ADD]
+            details["num_del"] = pr_data[GH_API_PR_DEL]
+            details["num_files"] = pr_data[GH_API_PR_FILES]
+        return details
+
+    @staticmethod
+    def _get_single_commit(token, username, repo_name, sha):
+        """Get a single commit"""
+        commit_data, is_error = get_single_commit(token, username, repo_name, sha)
+        if is_error:
+            return {
+                GH_API_COMMIT_ADD: None,
+                GH_API_COMMIT_DEL: None,
+                GH_API_COMMIT_TOT: None
+            }
+        return commit_data[GH_API_COMMIT_STATS]
+
+    @staticmethod
+    def _add_commit_stats(token, username, repo_name, commit_data):
+        """Add commit stats to the commit object"""
+        for _author, commit_list in commit_data.items():
+            for commit in commit_list:
+                # in-place modification
+                commit[GH_API_COMMIT_STATS] = AnalysisPerformer._get_single_commit(
+                    token, username, repo_name, commit["sha"]
+                )
+        return commit_data

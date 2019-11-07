@@ -111,14 +111,36 @@ def get_protection_config():
 
 
 @http_error_decorator
-def get_commit(token, owner, repo_name, start_date, end_date, author=None):
-    """Get commits for the given date range """
+def get_commit(token, owner, repo_name, branch, start_date, end_date, author=None):
+    """Get commits for the given repository for the given date range """
     endpoint = "{}{}".format(GH_API.get("BASE"),
                              GH_API.get("GET_COMMIT")
-                             .format(owner, repo_name, start_date, end_date))
+                             .format(owner, repo_name, branch, start_date, end_date))
     # Get commits only for a single author
     if author is not None:
         endpoint += "&author={}".format(author)
+    request_obj = Request(endpoint, headers=get_headers(token))
+    response = urlopen(request_obj)
+    return json.load(response)
+
+
+@http_error_decorator
+def get_single_commit(token, owner, repo_name, sha):
+    """Get a single commit"""
+    endpoint = "{}{}".format(GH_API.get("BASE"),
+                             GH_API.get("GET_SINGLE_COMMIT")
+                             .format(owner, repo_name, sha))
+    request_obj = Request(endpoint, headers=get_headers(token))
+    response = urlopen(request_obj)
+    return json.load(response)
+
+
+@http_error_decorator
+def get_single_pr(token, owner, repo_name, pr_num):
+    """Get a single PR"""
+    endpoint = "{}{}".format(GH_API.get("BASE"),
+                             GH_API.get("GET_SINGLE_PR")
+                             .format(owner, repo_name, pr_num))
     request_obj = Request(endpoint, headers=get_headers(token))
     response = urlopen(request_obj)
     return json.load(response)
@@ -129,6 +151,26 @@ def get_collaborators(token, owner, repo_name):
     """get a list of collaborators for a repositories"""
     endpoint = "{}{}".format(GH_API.get("BASE"),
                              GH_API.get("GET_COLLAB").format(owner, repo_name))
+    request_obj = Request(endpoint, headers=get_headers(token))
+    response = urlopen(request_obj)
+    return json.load(response)
+
+
+@http_error_decorator
+def get_pr(token, owner, repo_name, state="all"):
+    """Get PRs for the given repository"""
+    endpoint = "{}{}".format(GH_API.get("BASE"),
+                             GH_API.get("GET_PR").format(owner, repo_name, state))
+    request_obj = Request(endpoint, headers=get_headers(token))
+    response = urlopen(request_obj)
+    return json.load(response)
+
+
+@http_error_decorator
+def get_branches(token, owner, repo_name):
+    """Get all branch names"""
+    endpoint = "{}{}".format(GH_API.get("BASE"),
+                             GH_API.get("GET_BRANCHES").format(owner, repo_name))
     request_obj = Request(endpoint, headers=get_headers(token))
     response = urlopen(request_obj)
     return json.load(response)
