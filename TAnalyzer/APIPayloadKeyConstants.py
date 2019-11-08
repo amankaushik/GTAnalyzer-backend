@@ -27,3 +27,5 @@ TG_USER_ID = "user_id"
 TG_PROJECT_ID = "id"
 TG_PROJECT_PRIVACY = "is_private"
 
+TG_ANALYSE_REPO_LIST = "board_names"
+TG_ANALYSE_REPO_LIST_NAME = "name"

@@ -4,7 +4,7 @@ Module to interact with the GitHub API
 
 from urllib.request import Request, urlopen
 from GTAnalyzer.settings import GH_API
-from .decorators import http_error_decorator
+from commons.decorators import http_error_decorator
 import json
 import logging
 

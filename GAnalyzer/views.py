@@ -2,9 +2,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework import status
-from .dataapi import DataExtractor, RepositoryListGetter, RepositoryCreator, FlightChecker, Analyzer, \
-    AnalysisResultsPoller
-from .decorators import error_decorator
+from .dataapi import DataExtractor, RepositoryListGetter, RepositoryCreator,\
+    FlightChecker, AnalysisPerformer
+from commons.decorators import error_decorator
+from commons.utils import AnalysisResultsPoller, Analyzer
+from .APIPayloadKeyConstants import *
 import logging
 import random
 
@@ -67,7 +69,10 @@ class AnalyzeView(APIView):
         data = DataExtractor.get_data_object(request)
         request_id = random.randint(9999, 99999)
         data['request_id'] = request_id
-        response, is_error = Analyzer.perform_analysis_async(data)
+        response, is_error = Analyzer.perform_analysis_async(data,
+                                                             GH_ANALYSE_REPO_LIST,
+                                                             GH_ANALYSE_REPO_LIST_NAME,
+                                                             AnalysisPerformer)
         if is_error:
             return Response(response, status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response(response)

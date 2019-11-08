@@ -3,9 +3,8 @@ Support Module for Views
 """
 import logging
 from TAnalyzer import TaigaAPI
-from .utils import *
-from .decorators import dataapi_response_decorator
-
+from commons.utils import *
+from commons.decorators import dataapi_response_decorator
 
 LOGGER = logging.getLogger(__name__)
 
@@ -111,3 +110,11 @@ class MembershipCreator(object):
     def add_user_to_project(data):
         payload = PayloadCreator.create_bulk_membership_creation_payload(data)
         return TaigaAPI.add_user_to_project(payload)
+
+
+class AnalysisPerformer(object):
+    """Perform Analysis on GH repo"""
+
+    @staticmethod
+    def perform_analysis(board, data):
+        return {board, data}

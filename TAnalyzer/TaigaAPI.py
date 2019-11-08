@@ -6,7 +6,7 @@ import urllib
 from urllib.request import Request, urlopen
 from urllib import parse
 from GTAnalyzer.settings import TG_API
-from .decorators import http_error_decorator
+from commons.decorators import http_error_decorator
 from .APIPayloadKeyConstants import *
 import json
 import logging

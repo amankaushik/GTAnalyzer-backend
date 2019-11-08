@@ -4,9 +4,8 @@ Support Module for Views
 import logging
 from datetime import datetime, timezone
 from .GitHubAPI import *
-from .utils import *
+from commons.utils import *
 from .APIPayloadKeyConstants import *
-from .decorators import new_thread_decorator
 
 LOGGER = logging.getLogger(__name__)
 
@@ -16,9 +15,9 @@ class FlightChecker(object):
 
     @staticmethod
     def perform_flight_check(data):
-        token = get_token(data)
-        username = get_username(data)
-        result = check_token_username(token, username)
+        token = FieldExtractor.get_auth_token(data, GH_TOKEN)
+        username = FieldExtractor.get_username(data, GH_USERNAME)
+        result = Validator.check_password_username(token, username)
         if result is not None:  # check failed
             return result, True
         response, is_error = flight_check(token)
@@ -36,7 +35,7 @@ class RepositoryListGetter(object):
 
     @staticmethod
     def get_repository_list(data):
-        token = get_token(data)
+        token = FieldExtractor.get_auth_token(data, GH_TOKEN)
         return get_repository_list(token)
 
 
@@ -56,10 +55,10 @@ class RepositoryCreator(object):
     """Creator class for CreateRepositoryView"""
 
     @staticmethod
-    def create_repository(data, key="file"):
-        token = get_token(data)
-        username = get_username(data)
-        result = check_token_username(token, username)
+    def create_repository(data):
+        token = FieldExtractor.get_auth_token(data, GH_TOKEN)
+        username = FieldExtractor.get_username(data, GH_USERNAME)
+        result = Validator.check_password_username(token, username)
         if result is not None:  # token-username validation failed
             return result, True
         parsed = list(map(lambda x: RepositoryCreator.sanitize_row(x),
@@ -153,52 +152,13 @@ class RepositoryCreator(object):
         return flow_response
 
 
-class Analyzer(object):
-    """Perform repository analysis"""
-
-    @staticmethod
-    def perform_analysis_async(data):
-        # number of repos to Analyse
-        num_combinations = len(data.get(GH_ANALYSE_REPO_LIST))
-        request_id = data.get('request_id')
-        Analyzer._perform_analysis_threaded(data)
-        return {'saved': True,
-                'combinations': num_combinations,
-                'request_id': request_id}, False
-
-    @staticmethod
-    @new_thread_decorator
-    def _perform_analysis_threaded(data):
-        # loop through each group in data and
-        # perform analysis of each group sequentially
-        # get singleton object
-        apt_object = AnalysisProgressTracker.get_instance()
-        for repo in data.pop(GH_ANALYSE_REPO_LIST):
-            repo_name = repo.get(GH_ANALYSE_REPO_LIST_NAME)
-            result = AnalysisPerformer.perform_analysis(repo, data)
-            apt_object.set_analysis_results(data['request_id'],
-                                            repo_name,
-                                            result)
-        return
-
-
-class AnalysisResultsPoller(object):
-    """Poller for Analysis results"""
-
-    @staticmethod
-    def poll(data):
-        request_id = data.get('request_id')
-        apt_object = AnalysisProgressTracker.get_instance()
-        return apt_object.get_analysis_results(request_id), False
-
-
 class AnalysisPerformer(object):
     """Perform Analysis on GH repo"""
 
     @staticmethod
     def perform_analysis(repo, data):
-        username = get_username(data)
-        token = get_token(data)
+        token = FieldExtractor.get_auth_token(data, GH_TOKEN)
+        username = FieldExtractor.get_username(data, GH_USERNAME)
         repo_name = repo.get(GH_ANALYSE_REPO_LIST_NAME)
         start_date = datetime.fromtimestamp(int(repo.get(GH_ANALYSE_REPO_LIST_ST_DT)),
                                             tz=timezone.utc).isoformat()
@@ -220,7 +180,7 @@ class AnalysisPerformer(object):
             data_dump[branch] = {name: {} for name in c_names}
             # Get commit data for each collaborator for the given date range
             commit_data, is_error = AnalysisPerformer._get_commits(token, username, repo_name, branch,
-                                                                   start_date, end_date, c_names)
+                                                                   start_date, end_date)
             if is_error:
                 return commit_data
             commit_data = AnalysisPerformer._add_commit_stats(token,
@@ -272,7 +232,7 @@ class AnalysisPerformer(object):
         }
 
     @staticmethod
-    def _get_commits(token, username, repo_name, branch, start_date, end_date, c_names):
+    def _get_commits(token, username, repo_name, branch, start_date, end_date):
         """get commits for a repository"""
         commits_dump, is_error = get_commit(token, username, repo_name, branch,
                                             start_date, end_date)
@@ -302,7 +262,7 @@ class AnalysisPerformer(object):
                    is_error
         # collaborator names
         return [collaborator[GH_API_USERNAME] for collaborator in collaborators], \
-               is_error
+            is_error
 
     @staticmethod
     def _make_pr_details_object(data):
