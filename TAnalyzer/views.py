@@ -64,8 +64,8 @@ class AnalyzeView(APIView):
         request_id = random.randint(9999, 99999)
         data['request_id'] = request_id
         response, is_error = Analyzer.perform_analysis_async(data,
-                                                             TG_ANALYSE_REPO_LIST,
-                                                             TG_ANALYSE_REPO_LIST_NAME,
+                                                             TG_ANLS_RP_LST,
+                                                             TG_ANLS_RP_LST_NAME,
                                                              AnalysisPerformer)
         if is_error:
             return Response(response, status.HTTP_500_INTERNAL_SERVER_ERROR)

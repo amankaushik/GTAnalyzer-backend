@@ -150,7 +150,7 @@ class AnalysisProgressTracker(object):
 
 
 class CreateRepoResponse(object):
-    """Collection of named-tuples"""
+    """Collection of variables"""
     repo_name = None,  # String
     reason = None,  # String
     failed = None,  # Bool
@@ -198,3 +198,48 @@ class Analyzer(object):
                                             entity_name,
                                             result)
         return
+
+
+class ProjectDetails(object):
+    """Project Details Object"""
+    id = None,  # String
+    name = None,  # String
+    members = [],  # List
+    milestones = [],  # List of MilestoneDetails object
+
+
+class MilestoneDetails(object):
+    """Milestone Details object"""
+    id = None,  # String
+    name = None,  # String
+    slug = None,  # String
+    is_closed = None,  # Bool
+    closed_points = None,  # Int
+    total_points = None,  # Int
+    created_date = None,  # String
+    modified_date = None,  # String
+    estimated_finish = None,  # String
+    estimated_start = None,  # String
+    user_stories = [],  # List of UserStoryDetails object
+
+
+class UserStoryDetails(object):
+    """User Story Details"""
+    id = None,  # String
+    assigned_to = None,  # String (username)
+    status = None,  # String
+    subject = None,  # String
+    total_points = None,  # Int
+    created_date = None,  # String
+    modified_date = None,  # String
+    finish_date = None,  # String
+    is_closed = None,  # Bool
+    history = [],
+    tasks = [],  # List of TaskDetails Object
+
+
+class TaskDetails(object):
+    """Task Details"""
+    pass
+
+

@@ -171,7 +171,15 @@ TG_API = {
     "AUTH": "/auth",
     "MEMBERSHIP": "/projects?member={}",
     "CREATE_PROJECT": "/projects",
-    "ADD_MEMBERS": "/memberships/bulk_create"
+    "ADD_MEMBERS": "/memberships/bulk_create",
+    "PROJECT_BY_SLUG": "/projects/by_slug?slug={}",
+    "MILESTONES": "/milestones?project={}",
+    "USER_STORIES": "/userstories?project={}",
+    "TASKS": "/tasks?project={}",
+    "HISTORY_US": "/history/userstory/{}",
+    "HISTORY_TASK": "/history/task/{}",
+    "EXPORT": "/exporter/{}",
+    "MEDIA": "https://media-protected.taiga.io/exports/{}/{}-{}.json"  # /project-id/project-slug-export_id.json
 }
 
 LOGGING = {

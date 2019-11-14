@@ -2,9 +2,7 @@
 Module to interact with the GitHub API
 """
 
-import urllib
-from urllib.request import Request, urlopen
-from urllib import parse
+from urllib.request import Request, urlopen, urlretrieve
 from GTAnalyzer.settings import TG_API
 from commons.decorators import http_error_decorator
 from .APIPayloadKeyConstants import *
@@ -70,3 +68,64 @@ def add_user_to_project(payload):
     request_obj = Request(endpoint, data=data, headers=get_headers(auth_token))
     response = urlopen(request_obj)
     return json.load(response)
+
+
+@http_error_decorator
+def get_project_details(payload):
+    """Get project details"""
+    project_slug = payload.pop(TG_PROJECT_SLUG)
+    auth_token = payload.pop(TG_AUTH_TOKEN)
+    endpoint = "{}{}".format(TG_API.get("BASE"),
+                             TG_API.get("PROJECT_BY_SLUG").format(project_slug))
+    request_obj = Request(endpoint, headers=get_headers(auth_token))
+    response = urlopen(request_obj)
+    return json.load(response)
+
+
+@http_error_decorator
+def get_milestones(payload, milestone_key):
+    """Get project milestones/user-stories/tasks"""
+    project_id = payload.pop(TG_PROJECT_ID)
+    auth_token = payload.pop(TG_AUTH_TOKEN)
+    endpoint = "{}{}".format(TG_API.get("BASE"),
+                             TG_API.get(milestone_key).format(project_id))
+    request_obj = Request(endpoint, headers=get_headers(auth_token))
+    response = urlopen(request_obj)
+    return json.load(response)
+
+
+@http_error_decorator
+def get_history(_id, auth_token, key):
+    """Get US/Task/Wiki History"""
+    endpoint = "{}{}".format(TG_API.get("BASE"),
+                             TG_API.get(key).format(_id))
+    request_obj = Request(endpoint, headers=get_headers(auth_token))
+    response = urlopen(request_obj)
+    return json.load(response)
+
+
+@http_error_decorator
+def get_project_export(payload):
+    """Get project export"""
+    auth_token = payload.pop(TG_AUTH_TOKEN)
+    project_id = payload.pop(TG_PROJECT_ID)
+    endpoint = "{}{}".format(TG_API.get("BASE"),
+                             TG_API.get("EXPORT").format(project_id))
+    request_obj = Request(endpoint, headers=get_headers(auth_token))
+    response = urlopen(request_obj)
+    return {"response": json.load(response), "status": response.status}
+
+
+@http_error_decorator
+def get_exported_data(payload, board_name):
+    """Get project export data dump"""
+    auth_token = payload.pop(TG_AUTH_TOKEN)
+    url = payload.pop(TG_EXPORT_DONE)
+    LOGGER.info("URL: %s", url)
+
+    # request_obj = Request(url, headers=get_headers(auth_token))
+    # filename = '{}-dump.json'.format(board_name)
+    filename, headers = urlretrieve(url)
+    LOGGER.info("Filename: %s", filename)
+    LOGGER.info("Headers: %s", headers)
+    return filename
