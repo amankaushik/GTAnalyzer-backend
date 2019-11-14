@@ -6,7 +6,7 @@ from commons.decorators import *
 from commons.utils import DataExtractor, Analyzer, AnalysisResultsPoller
 from .APIPayloadKeyConstants import *
 from .dataapi import AuthTokenGetter, MembershipDetailsGetter, \
-    ProjectBoardCreator, AnalysisPerformer
+    ProjectBoardCreator, AnalysisPerformer, MilestonesGetter
 import logging
 
 
@@ -83,6 +83,22 @@ class AnalysisResultsPollView(APIView):
         """Poll Results"""
         data = DataExtractor.get_data_object(request)
         response, is_error = AnalysisResultsPoller.poll(data)
+        if is_error:
+            return Response(response, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(response)
+
+
+class MilestonesView(APIView):
+    """Get Milestones for a board"""
+    throttle_classes = (UserRateThrottle,)
+    http_method_names = ['post']
+
+    @staticmethod
+    @error_decorator
+    def post(request):
+        """Poll Results"""
+        data = DataExtractor.get_data_object(request)
+        response, is_error = MilestonesGetter.get_milestones(data)
         if is_error:
             return Response(response, status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response(response)

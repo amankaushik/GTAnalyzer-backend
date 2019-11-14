@@ -1,5 +1,5 @@
 """Support methods"""
-
+import json
 import logging
 from collections import defaultdict
 
@@ -200,15 +200,22 @@ class Analyzer(object):
         return
 
 
-class ProjectDetails(object):
+class TaigaDetails(object):
+    """Taiga Details"""
+    def to_json(self):
+        return json.dumps(self, default=lambda o: o.__dict__,
+                          sort_keys=True, indent=4)
+
+
+class ProjectDetails(TaigaDetails):
     """Project Details Object"""
     id = None,  # String
     name = None,  # String
-    members = [],  # List
-    milestones = [],  # List of MilestoneDetails object
+    members = None,  # List
+    milestones = None,  # List of MilestoneDetails object
 
 
-class MilestoneDetails(object):
+class MilestoneDetails(TaigaDetails):
     """Milestone Details object"""
     id = None,  # String
     name = None,  # String
@@ -220,10 +227,10 @@ class MilestoneDetails(object):
     modified_date = None,  # String
     estimated_finish = None,  # String
     estimated_start = None,  # String
-    user_stories = [],  # List of UserStoryDetails object
+    user_stories = None,  # List of UserStoryDetails object
 
 
-class UserStoryDetails(object):
+class UserStoryDetails(TaigaDetails):
     """User Story Details"""
     id = None,  # String
     assigned_to = None,  # String (username)
@@ -234,12 +241,20 @@ class UserStoryDetails(object):
     modified_date = None,  # String
     finish_date = None,  # String
     is_closed = None,  # Bool
-    history = [],
-    tasks = [],  # List of TaskDetails Object
+    history = None,
+    tasks = None,  # List of TaskDetails Object
 
 
-class TaskDetails(object):
+class TaskDetails(TaigaDetails):
     """Task Details"""
-    pass
-
-
+    id = None,  # String
+    assigned_to = None,  # String (username)
+    status = None,  # String
+    subject = None,  # String
+    user_story = None,  # String
+    created_date = None,  # String
+    modified_date = None,  # String
+    finished_date = None,  # String
+    due_date = None,  # String
+    is_closed = None,  # Bool
+    history = None,  # List

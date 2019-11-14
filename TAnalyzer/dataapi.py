@@ -178,25 +178,59 @@ class AnalysisPerformer(object):
         if is_error:
             return project_details, is_error
         project_details = AnalysisPerformer._extract_project_details(project_details)
-        project_id = project_details.id
         # Get Project Milestones - Provided both Sprint and US
         milestones, is_error = ProjectDetailsGetter\
-            .get_milestones(board_name, project_id, auth_token, "MILESTONES")
+            .get_milestones(board_name, project_details.id, auth_token, "MILESTONES")
         if is_error:
             return milestones, is_error
         project_details.milestones = AnalysisPerformer._extract_milestones(milestones)
-        # Get US History - For each US
-        # TODO
+
         # Get Project Tasks
         tasks, is_error = ProjectDetailsGetter \
-            .get_milestones(board_name, project_id, auth_token, "TASKS")
+            .get_milestones(board_name, project_details.id, auth_token, "TASKS")
         if is_error:
             return tasks, is_error
         tasks = AnalysisPerformer._extract_tasks(tasks)
-        # 6. Get Task History - For each Task
-        # TODO
 
-        return {}, is_error
+        # Integrate Tasks with US
+        project_details = AnalysisPerformer._integrate_tasks(project_details, tasks)
+
+        # Get History - For each US and Task
+        project_details = AnalysisPerformer._get_history(project_details, auth_token)
+
+        project_details = json.loads(project_details.to_json())
+        return project_details, is_error
+
+    @staticmethod
+    def _integrate_tasks(project_details, tasks):
+        """Integrate task details with US"""
+        task_dict = defaultdict(list)
+        for task in tasks:
+            task_dict[task.user_story].append(task)
+        for milestone in project_details.milestones:
+            for user_story in milestone.user_stories:
+                user_story.tasks = task_dict[user_story.id]
+        return project_details
+
+    @staticmethod
+    def _get_history(project_details, auth_token):
+        """Get history for user stories and tasks"""
+        for milestone in project_details.milestones:
+            for user_story in milestone.user_stories:
+                history, is_error = TaigaAPI.get_history(user_story.id,
+                                                         auth_token, "HISTORY_US")
+                if is_error:
+                    user_story.history = None
+                else:
+                    user_story.history = AnalysisPerformer._extract_us_history(history)
+                for task in user_story.tasks:
+                    history, is_error = TaigaAPI.get_history(user_story.id,
+                                                             auth_token, "HISTORY_TASK")
+                    if is_error:
+                        task.history = None
+                    else:
+                        task.history = AnalysisPerformer._extract_task_history(history)
+        return project_details
 
     @staticmethod
     def _make_project_export_url(project_id, project_slug, export_id):
@@ -209,6 +243,7 @@ class AnalysisPerformer(object):
         extracted = ProjectDetails()
         extracted.id = project_details[TG_PROJECT_ID]
         extracted.name = project_details[TG_ANLS_PRJ_NAME]
+        extracted.members = []
         for member in project_details[TG_ANLS_PRJ_MEM]:
             tmp = dict()
             tmp["id"] = member[TG_ANLS_PRJ_MEM_ID]
@@ -233,7 +268,8 @@ class AnalysisPerformer(object):
             extracted.estimated_finish = milestone[TG_ANLS_PRJ_MS_EST_FIN]
             extracted.estimated_start = milestone[TG_ANLS_PRJ_MS_EST_SRT]
             extracted.modified_date = milestone[TG_ANLS_PRJ_MS_MD_DT]
-            for user_story in milestones[TG_ANLS_PRJ_MS_US]:
+            extracted.user_stories = []
+            for user_story in milestone[TG_ANLS_PRJ_MS_US]:
                 us = UserStoryDetails()
                 us.id = user_story[TG_ANLS_PRJ_US_ID]
                 us.status = user_story[TG_ANLS_PRJ_US_STS_INFO][TG_ANLS_PRJ_US_STS_NAME]
@@ -243,19 +279,70 @@ class AnalysisPerformer(object):
                 us.created_date = user_story[TG_ANLS_PRJ_US_CR_DT]
                 us.finish_date = user_story[TG_ANLS_PRJ_US_FIN_DT]
                 us.is_closed = user_story[TG_ANLS_PRJ_US_IS_CLS]
-                us.assigned_to = user_story[TG_ANLS_PRJ_US_ASG_INFO][TG_ANLS_PRJ_US_ASG_TO]
+                us.assigned_to = None
+                if user_story[TG_ANLS_PRJ_US_ASG_INFO] is not None:
+                    us.assigned_to = user_story[TG_ANLS_PRJ_US_ASG_INFO][TG_ANLS_PRJ_US_ASG_TO]
                 extracted.user_stories.append(us)
             details.append(extracted)
         return details
 
     @staticmethod
-    def _extract_user_stories(user_stories):
-        """Extract required user story details"""
-        extracted = dict()
+    def _extract_tasks(tasks):
+        """Extract required task details"""
+        extracted = list()
+        for task in tasks:
+            tsk = TaskDetails()
+            tsk.id = task[TG_ANLS_PRJ_TSK_ID]
+            tsk.status = task[TG_ANLS_PRJ_TSK_STS_INFO][TG_ANLS_PRJ_TSK_STS_NAME]
+            tsk.subject = task[TG_ANLS_PRJ_TSK_SUB]
+            tsk.user_story = task[TG_ANLS_PRJ_TSK_TOT_PTS]
+            tsk.modified_date = task[TG_ANLS_PRJ_TSK_MD_DT]
+            tsk.created_date = task[TG_ANLS_PRJ_TSK_CR_DT]
+            tsk.finished_date = task[TG_ANLS_PRJ_TSK_FIN_DT]
+            tsk.due_date = task[TG_ANLS_PRJ_TSK_DUE_DT]
+            tsk.is_closed = task[TG_ANLS_PRJ_TSK_IS_CLS]
+            tsk.assigned_to = None
+            if task[TG_ANLS_PRJ_TSK_ASG_INFO] is not None:
+                tsk.assigned_to = task[TG_ANLS_PRJ_TSK_ASG_INFO][TG_ANLS_PRJ_TSK_ASG_TO]
+            extracted.append(tsk)
         return extracted
 
     @staticmethod
-    def _extract_tasks(tasks):
-        """Extract required task details"""
-        extracted = dict()
-        return extracted
+    def _extract_us_history(history):
+        """Extract history details"""
+        return history
+
+    @staticmethod
+    def _extract_task_history(history):
+        """Extract history details"""
+        return history
+
+
+class MilestonesGetter(object):
+    """Get Milestones for a board"""
+
+    @staticmethod
+    @dataapi_response_decorator
+    def get_milestones(data):
+        details = []
+        # Get Project Details
+        project_details, is_error = ProjectDetailsGetter \
+            .get_project_details_by_slug(data[TG_API_PROJECT_NAME], data[TG_AUTH_TOKEN])
+        if is_error:
+            return project_details, is_error
+        project_id = project_details[TG_PROJECT_ID]
+        # Get Project Milestones - Provided both Sprint and US
+        milestones, is_error = ProjectDetailsGetter \
+            .get_milestones(data[TG_API_PROJECT_NAME], project_id,
+                            data[TG_AUTH_TOKEN], "MILESTONES")
+        if is_error:
+            return milestones, is_error
+        for milestone in milestones:
+            tmp = MilestoneDetails()
+            tmp.name = milestone[TG_ANLS_PRJ_MS_NAME]
+            tmp.created_date = milestone[TG_ANLS_PRJ_MS_CR_DT]
+            tmp.estimated_finish = milestone[TG_ANLS_PRJ_MS_EST_FIN]
+            tmp.estimated_start = milestone[TG_ANLS_PRJ_MS_EST_SRT]
+            tmp.modified_date = milestone[TG_ANLS_PRJ_MS_MD_DT]
+            details.append(json.loads(tmp.to_json()))
+        return details, is_error
