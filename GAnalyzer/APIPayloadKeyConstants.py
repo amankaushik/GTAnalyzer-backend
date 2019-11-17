@@ -12,8 +12,8 @@ GH_ANALYSE_REPO_LIST_NAME = "name"
 GH_ANALYSE_REPO_LIST_ST_DT = "start_date"
 GH_ANALYSE_REPO_LIST_ED_DT = "end_date"
 GH_ANALYSE_INTEGRATE_TAIGA = "integrate_taiga"
-GH_ANALYSE_TAIGA_USERNAME = "tg_username"
-GH_ANALYSE_TAIGA_PASSWORD = "tg_password"
+GH_ANALYSE_TAIGA_USERNAME = "tg_user_id"
+GH_ANALYSE_TAIGA_PASSWORD = "tg_auth_token"
 
 # sent by GitHub API
 GH_API_USERNAME = "login"

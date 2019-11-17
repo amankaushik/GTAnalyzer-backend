@@ -23,7 +23,9 @@ class ListRepositoryView(APIView):
     def post(request):
         """GET the list of all repositories"""
         data = DataExtractor.get_data_object(request)
-        response = RepositoryListGetter.get_repository_list(data)
+        response, is_error = RepositoryListGetter.get_repository_list(data)
+        if is_error:
+            return Response(response, status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response(response)
 
 

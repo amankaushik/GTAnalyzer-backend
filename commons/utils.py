@@ -2,6 +2,7 @@
 import json
 import logging
 from collections import defaultdict
+from datetime import datetime
 
 from TAnalyzer.APIPayloadKeyConstants import *
 from GAnalyzer.APIPayloadKeyConstants import *
@@ -258,3 +259,21 @@ class TaskDetails(TaigaDetails):
     due_date = None,  # String
     is_closed = None,  # Bool
     history = None,  # List
+
+
+class HistoryEventDetails(TaigaDetails):
+    """History Event Details"""
+    created_at = None,  # String
+    diff = None,  # Dict
+
+
+class DateTimeFormatter(object):
+    """Format datetime objects"""
+
+    @staticmethod
+    def format_isodate_to_date(date_str, _format="%Y-%m-%dT%H:%M:%S.%fZ"):
+        return date_str if date_str is None else datetime.strptime(date_str, _format).date().isoformat()
+
+    @staticmethod
+    def format_github_date_to_str(date_str, _format="%Y-%m-%dT%H:%M:%SZ"):
+        return date_str if date_str is None else datetime.strptime(date_str, _format).date().isoformat()

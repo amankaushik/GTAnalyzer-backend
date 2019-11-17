@@ -164,7 +164,14 @@ class AnalysisPerformer(object):
                                             tz=timezone.utc).isoformat()
         end_date = datetime.fromtimestamp(int(repo.get(GH_ANALYSE_REPO_LIST_ED_DT)),
                                           tz=timezone.utc).isoformat()
-        # TODO: Check for Taiga Integration
+
+        # Check for Taiga Integration
+        integrate_tg = data[GH_ANALYSE_INTEGRATE_TAIGA]
+        if integrate_tg:
+            tg_username = data[GH_ANALYSE_TAIGA_USERNAME]
+            tg_password = data[GH_ANALYSE_TAIGA_PASSWORD]
+            pass
+
         # Get a list of branches for this repo
         branches, is_error = AnalysisPerformer._get_branches(token, username, repo_name)
         if is_error:
@@ -228,7 +235,7 @@ class AnalysisPerformer(object):
             "comment_count": commit[GH_API_COMMIT_CMT_CNT],
             "sha": data[GH_API_COMMIT_SHA],
             "url": data[GH_API_COMMIT_URL],
-            "date": commit[GH_API_COMMITTER][GH_API_COMMIT_DT]
+            "date": DateTimeFormatter.format_github_date_to_str(commit[GH_API_COMMITTER][GH_API_COMMIT_DT])
         }
 
     @staticmethod
@@ -273,9 +280,9 @@ class AnalysisPerformer(object):
             "state": data[GH_API_PR_STATE],
             "number": data[GH_API_PR_NUM],
             "body": data[GH_API_PR_BODY],
-            "created_at": data[GH_API_PR_CR_DT],
-            "closed_at": data.get(GH_API_PR_CL_DT),
-            "merged_at": data.get(GH_API_PR_MR_DT),
+            "created_at": DateTimeFormatter.format_github_date_to_str(data[GH_API_PR_CR_DT]),
+            "closed_at": DateTimeFormatter.format_github_date_to_str(data.get(GH_API_PR_CL_DT)),
+            "merged_at": DateTimeFormatter.format_github_date_to_str(data.get(GH_API_PR_MR_DT)),
             "assignees": data[GH_API_PR_ASG],
             "requested_reviewers": data[GH_API_PR_REV],
             "head": data[GH_API_PR_HEAD][GH_API_PR_REF],

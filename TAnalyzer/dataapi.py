@@ -142,32 +142,10 @@ class ProjectDetailsGetter(object):
         return details, is_error
 
 
-class ProjectExportGetter(object):
-    """Get an export of the project's data"""
-
-    @staticmethod
-    def request_project_export(project_id, auth_token, board_name):
-        payload = {
-            TG_PROJECT_ID: project_id,
-            TG_AUTH_TOKEN: auth_token
-        }
-        details, is_error = TaigaAPI.get_project_export(payload)
-        if is_error:
-            return {"error": details,
-                    "failed": True, "board_name": board_name}, is_error
-        return details, is_error
-
-    @staticmethod
-    def get_exported_data(payload, board_name):
-        """Get project export"""
-        return TaigaAPI.get_exported_data(payload, board_name)
-
-
 class AnalysisPerformer(object):
     """Perform Analysis on GH repo"""
 
     @staticmethod
-    @dataapi_response_decorator
     def perform_analysis(board, data):
         # 1. Get project-id from the project-slug
         auth_token = data[TG_AUTH_TOKEN]
@@ -176,20 +154,20 @@ class AnalysisPerformer(object):
         project_details, is_error = ProjectDetailsGetter\
             .get_project_details_by_slug(board_name, auth_token)
         if is_error:
-            return project_details, is_error
+            return project_details
         project_details = AnalysisPerformer._extract_project_details(project_details)
         # Get Project Milestones - Provided both Sprint and US
         milestones, is_error = ProjectDetailsGetter\
             .get_milestones(board_name, project_details.id, auth_token, "MILESTONES")
         if is_error:
-            return milestones, is_error
+            return milestones
         project_details.milestones = AnalysisPerformer._extract_milestones(milestones)
 
         # Get Project Tasks
         tasks, is_error = ProjectDetailsGetter \
             .get_milestones(board_name, project_details.id, auth_token, "TASKS")
         if is_error:
-            return tasks, is_error
+            return tasks
         tasks = AnalysisPerformer._extract_tasks(tasks)
 
         # Integrate Tasks with US
@@ -199,7 +177,7 @@ class AnalysisPerformer(object):
         project_details = AnalysisPerformer._get_history(project_details, auth_token)
 
         project_details = json.loads(project_details.to_json())
-        return project_details, is_error
+        return project_details
 
     @staticmethod
     def _integrate_tasks(project_details, tasks):
@@ -222,14 +200,14 @@ class AnalysisPerformer(object):
                 if is_error:
                     user_story.history = None
                 else:
-                    user_story.history = AnalysisPerformer._extract_us_history(history)
+                    user_story.history = AnalysisPerformer._extract_history(history)
                 for task in user_story.tasks:
                     history, is_error = TaigaAPI.get_history(user_story.id,
                                                              auth_token, "HISTORY_TASK")
                     if is_error:
                         task.history = None
                     else:
-                        task.history = AnalysisPerformer._extract_task_history(history)
+                        task.history = AnalysisPerformer._extract_history(history)
         return project_details
 
     @staticmethod
@@ -264,10 +242,13 @@ class AnalysisPerformer(object):
             extracted.is_closed = milestone[TG_ANLS_PRJ_MS_CLS]
             extracted.total_points = milestone[TG_ANLS_PRJ_MS_TOT_PTS]
             extracted.closed_points = milestone[TG_ANLS_PRJ_MS_CLS_PTS]
-            extracted.created_date = milestone[TG_ANLS_PRJ_MS_CR_DT]
+            extracted.created_date = DateTimeFormatter\
+                .format_isodate_to_date(milestone[TG_ANLS_PRJ_MS_CR_DT])
+            # estimated_start and estimated_finish already in required format
             extracted.estimated_finish = milestone[TG_ANLS_PRJ_MS_EST_FIN]
             extracted.estimated_start = milestone[TG_ANLS_PRJ_MS_EST_SRT]
-            extracted.modified_date = milestone[TG_ANLS_PRJ_MS_MD_DT]
+            extracted.modified_date = DateTimeFormatter\
+                .format_isodate_to_date(milestone[TG_ANLS_PRJ_MS_MD_DT])
             extracted.user_stories = []
             for user_story in milestone[TG_ANLS_PRJ_MS_US]:
                 us = UserStoryDetails()
@@ -275,9 +256,12 @@ class AnalysisPerformer(object):
                 us.status = user_story[TG_ANLS_PRJ_US_STS_INFO][TG_ANLS_PRJ_US_STS_NAME]
                 us.subject = user_story[TG_ANLS_PRJ_US_SUB]
                 us.total_points = user_story[TG_ANLS_PRJ_US_TOT_PTS]
-                us.modified_date = user_story[TG_ANLS_PRJ_US_MD_DT]
-                us.created_date = user_story[TG_ANLS_PRJ_US_CR_DT]
-                us.finish_date = user_story[TG_ANLS_PRJ_US_FIN_DT]
+                us.modified_date = DateTimeFormatter\
+                    .format_isodate_to_date(user_story[TG_ANLS_PRJ_US_MD_DT])
+                us.created_date = DateTimeFormatter\
+                    .format_isodate_to_date(user_story[TG_ANLS_PRJ_US_CR_DT])
+                us.finish_date = DateTimeFormatter\
+                    .format_isodate_to_date(user_story[TG_ANLS_PRJ_US_FIN_DT])
                 us.is_closed = user_story[TG_ANLS_PRJ_US_IS_CLS]
                 us.assigned_to = None
                 if user_story[TG_ANLS_PRJ_US_ASG_INFO] is not None:
@@ -296,10 +280,14 @@ class AnalysisPerformer(object):
             tsk.status = task[TG_ANLS_PRJ_TSK_STS_INFO][TG_ANLS_PRJ_TSK_STS_NAME]
             tsk.subject = task[TG_ANLS_PRJ_TSK_SUB]
             tsk.user_story = task[TG_ANLS_PRJ_TSK_TOT_PTS]
-            tsk.modified_date = task[TG_ANLS_PRJ_TSK_MD_DT]
-            tsk.created_date = task[TG_ANLS_PRJ_TSK_CR_DT]
-            tsk.finished_date = task[TG_ANLS_PRJ_TSK_FIN_DT]
-            tsk.due_date = task[TG_ANLS_PRJ_TSK_DUE_DT]
+            tsk.modified_date = DateTimeFormatter\
+                .format_isodate_to_date(task[TG_ANLS_PRJ_TSK_MD_DT])
+            tsk.created_date = DateTimeFormatter\
+                .format_isodate_to_date(task[TG_ANLS_PRJ_TSK_CR_DT])
+            tsk.finished_date = DateTimeFormatter\
+                .format_isodate_to_date(task[TG_ANLS_PRJ_TSK_FIN_DT])
+            tsk.due_date = DateTimeFormatter\
+                .format_isodate_to_date(task[TG_ANLS_PRJ_TSK_DUE_DT])
             tsk.is_closed = task[TG_ANLS_PRJ_TSK_IS_CLS]
             tsk.assigned_to = None
             if task[TG_ANLS_PRJ_TSK_ASG_INFO] is not None:
@@ -308,14 +296,16 @@ class AnalysisPerformer(object):
         return extracted
 
     @staticmethod
-    def _extract_us_history(history):
+    def _extract_history(history):
         """Extract history details"""
-        return history
-
-    @staticmethod
-    def _extract_task_history(history):
-        """Extract history details"""
-        return history
+        extracted = list()
+        for event in history:
+            tmp = HistoryEventDetails()
+            tmp.created_at = DateTimeFormatter\
+                .format_isodate_to_date(event[TG_ANLS_PRJ_HIS_CR_DT])
+            tmp.diff = event[TG_ANLS_PRJ_HIS_DIFF]
+            extracted.append(tmp)
+        return extracted
 
 
 class MilestonesGetter(object):
@@ -340,9 +330,12 @@ class MilestonesGetter(object):
         for milestone in milestones:
             tmp = MilestoneDetails()
             tmp.name = milestone[TG_ANLS_PRJ_MS_NAME]
-            tmp.created_date = milestone[TG_ANLS_PRJ_MS_CR_DT]
+            tmp.created_date = DateTimeFormatter\
+                .format_isodate_to_date(milestone[TG_ANLS_PRJ_MS_CR_DT])
+            # estimated_start and estimated_finish already in required format
             tmp.estimated_finish = milestone[TG_ANLS_PRJ_MS_EST_FIN]
             tmp.estimated_start = milestone[TG_ANLS_PRJ_MS_EST_SRT]
-            tmp.modified_date = milestone[TG_ANLS_PRJ_MS_MD_DT]
+            tmp.modified_date = DateTimeFormatter\
+                .format_isodate_to_date(milestone[TG_ANLS_PRJ_MS_MD_DT])
             details.append(json.loads(tmp.to_json()))
         return details, is_error
