@@ -151,7 +151,7 @@ GH_API = {
     "GH_TOKEN": os.environ.get("GITHUB_TOKEN"),
     "BASE": "https://api.github.com",
     "V3_HEADER": "application/vnd.github.v3+json",
-    "LIST_REPO": "/user/repos?",
+    "LIST_REPO": "/user/repos?page={}&",
     "CREATE_REPO": "/user/repos",
     "DELETE_REPO": "/repos/{}/{}",  # /repos/:owner/:repo
     "ADD_COLLAB": "/repos/{}/{}/collaborators/{}",  # /repos/:owner/:repo/collaborators/:username

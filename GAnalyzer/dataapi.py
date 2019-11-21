@@ -36,7 +36,19 @@ class RepositoryListGetter(object):
     @staticmethod
     def get_repository_list(data):
         token = FieldExtractor.get_auth_token(data, GH_TOKEN)
-        return get_repository_list(token)
+        # paginated api
+        responses = []
+        page = 1
+        is_error = True
+        while True:
+            repo_list, _is_error = get_repository_list(token, page)
+            # empty response, invalid page
+            if _is_error or len(repo_list) == 0:
+                break
+            responses.extend(repo_list)
+            is_error &= _is_error
+            page += 1
+        return responses, is_error
 
 
 class DataExtractor(object):
@@ -161,9 +173,9 @@ class AnalysisPerformer(object):
         username = FieldExtractor.get_username(data, GH_USERNAME)
         repo_name = repo.get(GH_ANALYSE_REPO_LIST_NAME)
         start_date = datetime.fromtimestamp(int(repo.get(GH_ANALYSE_REPO_LIST_ST_DT)),
-                                            tz=timezone.utc).isoformat()
+                                            tz=timezone.utc)
         end_date = datetime.fromtimestamp(int(repo.get(GH_ANALYSE_REPO_LIST_ED_DT)),
-                                          tz=timezone.utc).isoformat()
+                                          tz=timezone.utc)
 
         # Check for Taiga Integration
         integrate_tg = data[GH_ANALYSE_INTEGRATE_TAIGA]
@@ -187,7 +199,7 @@ class AnalysisPerformer(object):
             data_dump[branch] = {name: {} for name in c_names}
             # Get commit data for each collaborator for the given date range
             commit_data, is_error = AnalysisPerformer._get_commits(token, username, repo_name, branch,
-                                                                   start_date, end_date)
+                                                                   start_date.isoformat(), end_date.isoformat())
             if is_error:
                 return commit_data
             commit_data = AnalysisPerformer._add_commit_stats(token,
@@ -203,6 +215,8 @@ class AnalysisPerformer(object):
             return pr_details
         data_dump = AnalysisPerformer._merge_pr_data(data_dump, c_pr)
         data_dump["pr_details"] = pr_details
+        data_dump["start_date"] = start_date.strftime("%Y-%m-%d")
+        data_dump["end_date"] = end_date.strftime("%Y-%m-%d")
         return data_dump
 
     @staticmethod

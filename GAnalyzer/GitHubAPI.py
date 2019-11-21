@@ -22,10 +22,10 @@ def flight_check(token):
 
 
 @http_error_decorator
-def get_repository_list(token, _type=None, affiliation=None):
+def get_repository_list(token, page,  _type=None, affiliation=None):
     """get a list of repositories for a user"""
     endpoint = "{}{}".format(GH_API.get("BASE"),
-                             GH_API.get("LIST_REPO"))
+                             GH_API.get("LIST_REPO").format(page))
     if _type is not None:
         endpoint += "type={}".format(_type)
     if affiliation is not None:
