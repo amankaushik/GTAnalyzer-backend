@@ -96,14 +96,14 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny'
     ],
-    'DEFAULT_THROTTLE_CLASSES': (
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle'
-    ),
-    'DEFAULT_THROTTLE_RATES': {
-        'user': '50/day',
-        'anon': '50/day',
-    }
+    # 'DEFAULT_THROTTLE_CLASSES': (
+    #     'rest_framework.throttling.AnonRateThrottle',
+    #     'rest_framework.throttling.UserRateThrottle'
+    # ),
+    # 'DEFAULT_THROTTLE_RATES': {
+    #     'user': '50/day',
+    #     'anon': '50/day',
+    # }
 }
 
 # Database
@@ -157,7 +157,7 @@ GH_API = {
     "ADD_COLLAB": "/repos/{}/{}/collaborators/{}",  # /repos/:owner/:repo/collaborators/:username
     "BRANCH_PROTECT": "/repos/{}/{}/branches/{}/protection",  # /repos/:owner/:repo/branches/:branch/protection
     "FLIGHT_CHECK": "/user",
-    "GET_COMMIT": "/repos/{}/{}/commits?sha={}&since={}&until={}",  # /repos/:owner/:repo/commits
+    "GET_COMMIT": "/repos/{}/{}/commits?",  # /repos/:owner/:repo/commits
     "GET_SINGLE_COMMIT": "/repos/{}/{}/commits/{}",  # /repos/:owner/:repo/commits/:ref
     "GET_COLLAB": "/repos/{}/{}/collaborators?",  # /repos/:owner/:repo/collaborators
     "GET_PR": "/repos/{}/{}/pulls?state={}",  # /repos/:owner/:repo/pulls

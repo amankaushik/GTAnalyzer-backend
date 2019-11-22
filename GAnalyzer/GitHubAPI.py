@@ -3,6 +3,7 @@ Module to interact with the GitHub API
 """
 
 from urllib.request import Request, urlopen
+from urllib.parse import urlencode
 from GTAnalyzer.settings import GH_API
 from commons.decorators import http_error_decorator
 import json
@@ -114,8 +115,9 @@ def get_protection_config():
 def get_commit(token, owner, repo_name, branch, start_date, end_date, author=None):
     """Get commits for the given repository for the given date range """
     endpoint = "{}{}".format(GH_API.get("BASE"),
-                             GH_API.get("GET_COMMIT")
-                             .format(owner, repo_name, branch, start_date, end_date))
+                             GH_API.get("GET_COMMIT").format(owner, repo_name))
+    params = {"sha": branch, "since": start_date, "until": end_date}
+    endpoint = _encode_get_request_url(endpoint, params)
     # Get commits only for a single author
     if author is not None:
         endpoint += "&author={}".format(author)
@@ -174,3 +176,8 @@ def get_branches(token, owner, repo_name):
     request_obj = Request(endpoint, headers=get_headers(token))
     response = urlopen(request_obj)
     return json.load(response)
+
+
+def _encode_get_request_url(endpoint, params):
+    encoded_params = urlencode(params, encoding="utf-8")
+    return "{}{}".format(endpoint, encoded_params)

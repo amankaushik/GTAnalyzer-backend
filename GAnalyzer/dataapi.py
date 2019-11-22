@@ -201,20 +201,21 @@ class AnalysisPerformer(object):
             commit_data, is_error = AnalysisPerformer._get_commits(token, username, repo_name, branch,
                                                                    start_date.isoformat(), end_date.isoformat())
             if is_error:
-                return commit_data
-            commit_data = AnalysisPerformer._add_commit_stats(token,
-                                                              username, repo_name, commit_data)
-            if is_error:
-                return commit_data
-            data_dump[branch] = AnalysisPerformer._merge(data_dump[branch],
-                                                         commit_data, "commits")
+                for name in c_names:
+                    data_dump[branch][name] = commit_data
+            else:
+                commit_data = AnalysisPerformer._add_commit_stats(token,
+                                                                  username, repo_name, commit_data)
+                data_dump[branch] = AnalysisPerformer._merge(data_dump[branch],
+                                                             commit_data, "commits")
         # Get PR data for each collaborator
         # c_pr: collaborator to PR number mapping
-        pr_details, c_pr, is_error = AnalysisPerformer._get_pr(token, username, repo_name, c_names, branches)
-        if is_error:
-            return pr_details
-        data_dump = AnalysisPerformer._merge_pr_data(data_dump, c_pr)
-        data_dump["pr_details"] = pr_details
+        pr_details, c_pr, is_error = AnalysisPerformer._get_pr(token, username, repo_name, c_names,
+                                                               branches, start_date.isoformat(), end_date.isoformat())
+        data_dump["pr_details"] = {}
+        if not is_error:
+            data_dump = AnalysisPerformer._merge_pr_data(data_dump, c_pr)
+            data_dump["pr_details"] = pr_details
         data_dump["start_date"] = start_date.strftime("%Y-%m-%d")
         data_dump["end_date"] = end_date.strftime("%Y-%m-%d")
         return data_dump
@@ -228,11 +229,11 @@ class AnalysisPerformer(object):
         return data_dump
 
     @staticmethod
-    def _get_branches(token, username, repo_name):
+    def _get_branches(token, username, repo_name, step_name="Get Branches"):
         """Get branches for the given repo"""
         branches, is_error = get_branches(token, username, repo_name)
         if is_error:
-            return {"repo_name": repo_name, "error": branches, "failed": True}, \
+            return {"repo_name": repo_name, "error": branches, "failed": True, "step": step_name}, \
                    is_error
         # branch names
         return [branch[GH_API_BRANCH_NAME] for branch in branches], is_error
@@ -253,12 +254,12 @@ class AnalysisPerformer(object):
         }
 
     @staticmethod
-    def _get_commits(token, username, repo_name, branch, start_date, end_date):
+    def _get_commits(token, username, repo_name, branch, start_date, end_date, step_name="Get Commits"):
         """get commits for a repository"""
         commits_dump, is_error = get_commit(token, username, repo_name, branch,
                                             start_date, end_date)
         if is_error:
-            return {"repo_name": repo_name, "error": commits_dump, "failed": True}, \
+            return {"repo_name": repo_name, "error": commits_dump, "failed": True, "step": step_name}, \
                    is_error
         commit_map = defaultdict(list)
         for commit_data in commits_dump:
@@ -275,11 +276,11 @@ class AnalysisPerformer(object):
         return data_dump
 
     @staticmethod
-    def _get_collaborators(token, username, repo_name):
+    def _get_collaborators(token, username, repo_name, step_name="Get Collaborators"):
         """get collaborators for a repository"""
         collaborators, is_error = get_collaborators(token, username, repo_name)
         if is_error:
-            return {"repo_name": repo_name, "error": collaborators, "failed": True}, \
+            return {"repo_name": repo_name, "error": collaborators, "failed": True, "step": step_name}, \
                    is_error
         # collaborator names
         return [collaborator[GH_API_USERNAME] for collaborator in collaborators], \
@@ -305,11 +306,11 @@ class AnalysisPerformer(object):
         }
 
     @staticmethod
-    def _get_pr(token, username, repo_name, c_names, branches):
+    def _get_pr(token, username, repo_name, c_names, branches, start_date, end_date, step_name="Get PR"):
         """Get PRs for the given repository"""
         pr_dump, is_error = get_pr(token, username, repo_name)
         if is_error:
-            return {"repo_name": repo_name, "error": pr_dump, "failed": True}, {}, \
+            return {"repo_name": repo_name, "error": pr_dump, "failed": True, "step": step_name}, {}, \
                    is_error
         pr_details = {}
         # branch to collaborator to PR
@@ -318,6 +319,15 @@ class AnalysisPerformer(object):
         #         for name in c_names} for branch in branches}
         for pr in pr_dump:
             details = AnalysisPerformer._make_pr_details_object(pr)
+
+            # Don't add PR if the PR date is not between the selected date range
+            if details.get("created") is None:
+                continue
+            else:
+                _date = datetime.fromisoformat(details.get("created"))
+                if datetime.fromisoformat(start_date) > _date > datetime.fromisoformat(end_date):
+                    continue
+
             pr_num = details["number"]
             head = details["head"]
             base = details["base"]
