@@ -234,6 +234,7 @@ class MilestoneDetails(TaigaDetails):
 class UserStoryDetails(TaigaDetails):
     """User Story Details"""
     id = None,  # String
+    ref = None,  # String
     assigned_to = None,  # String (username)
     status = None,  # String
     subject = None,  # String
@@ -249,6 +250,7 @@ class UserStoryDetails(TaigaDetails):
 class TaskDetails(TaigaDetails):
     """Task Details"""
     id = None,  # String
+    ref = None,  # String
     assigned_to = None,  # String (username)
     status = None,  # String
     subject = None,  # String

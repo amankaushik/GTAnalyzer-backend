@@ -253,6 +253,7 @@ class AnalysisPerformer(object):
             for user_story in milestone[TG_ANLS_PRJ_MS_US]:
                 us = UserStoryDetails()
                 us.id = user_story[TG_ANLS_PRJ_US_ID]
+                us.ref = user_story[TG_ANLS_PRJ_US_REF]
                 us.status = user_story[TG_ANLS_PRJ_US_STS_INFO][TG_ANLS_PRJ_US_STS_NAME]
                 us.subject = user_story[TG_ANLS_PRJ_US_SUB]
                 us.total_points = user_story[TG_ANLS_PRJ_US_TOT_PTS]
@@ -277,9 +278,10 @@ class AnalysisPerformer(object):
         for task in tasks:
             tsk = TaskDetails()
             tsk.id = task[TG_ANLS_PRJ_TSK_ID]
+            tsk.ref = task[TG_ANLS_PRJ_TSK_REF]
             tsk.status = task[TG_ANLS_PRJ_TSK_STS_INFO][TG_ANLS_PRJ_TSK_STS_NAME]
             tsk.subject = task[TG_ANLS_PRJ_TSK_SUB]
-            tsk.user_story = task[TG_ANLS_PRJ_TSK_TOT_PTS]
+            tsk.user_story = task[TG_ANLS_PRJ_TSK_US]
             tsk.modified_date = DateTimeFormatter\
                 .format_isodate_to_date(task[TG_ANLS_PRJ_TSK_MD_DT])
             tsk.created_date = DateTimeFormatter\

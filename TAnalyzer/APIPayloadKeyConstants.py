@@ -56,6 +56,7 @@ TG_ANLS_PRJ_MS_EST_SRT = "estimated_start"
 
 # User Story
 TG_ANLS_PRJ_US_ID = "id"
+TG_ANLS_PRJ_US_REF = "ref"
 TG_ANLS_PRJ_US_ASG_INFO = "assigned_to_extra_info"
 TG_ANLS_PRJ_US_ASG_TO = "username"
 TG_ANLS_PRJ_US_FIN_DT = "finish_date"
@@ -69,6 +70,7 @@ TG_ANLS_PRJ_US_TOT_PTS = "total_points"
 
 # Task
 TG_ANLS_PRJ_TSK_ID = "id"
+TG_ANLS_PRJ_TSK_REF = "ref"
 TG_ANLS_PRJ_TSK_ASG_INFO = "assigned_to_extra_info"
 TG_ANLS_PRJ_TSK_ASG_TO = "username"
 TG_ANLS_PRJ_TSK_FIN_DT = "finished_date"
@@ -79,7 +81,7 @@ TG_ANLS_PRJ_TSK_IS_CLS = "is_closed"
 TG_ANLS_PRJ_TSK_STS_INFO = "status_extra_info"
 TG_ANLS_PRJ_TSK_STS_NAME = "name"
 TG_ANLS_PRJ_TSK_SUB = "subject"
-TG_ANLS_PRJ_TSK_TOT_PTS = "user_story"
+TG_ANLS_PRJ_TSK_US = "user_story"
 
 # History
 TG_ANLS_PRJ_HIS_CR_DT = "created_at"
